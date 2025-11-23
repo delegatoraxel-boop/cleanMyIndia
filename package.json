@@ -1,0 +1,28 @@
+{
+  "name": "cleanmyindia",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --env-file=.env dist/index.js",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@t3-oss/env-core": "^0.13.8",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.11",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
