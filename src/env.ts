@@ -5,6 +5,11 @@ export const env = createEnv({
     server: {
         NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
         PORT: z.string().default("3000"),
+        DATABASE_HOST: z.string().default("localhost"),
+        DATABASE_PORT: z.string().default("5432"),
+        DATABASE_NAME: z.string(),
+        DATABASE_USER: z.string(),
+        DATABASE_PASSWORD: z.string(),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,
