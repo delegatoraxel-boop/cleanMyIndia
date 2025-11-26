@@ -11,26 +11,34 @@ const port = parseInt(env.PORT);
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON request bodies
 
-// Health check endpoints
-app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({ status: 'ok', environment: env.NODE_ENV });
-});
+// Health check endpoint
+app.get('/health', async (_req: Request, res: Response) => {
+    const health = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: env.NODE_ENV,
+        database: {
+            status: 'unknown',
+            version: null as string | null
+        }
+    };
 
-app.get('/db-health', async (req: Request, res: Response) => {
     try {
         const client = await pool.connect();
         const result = await client.query('SELECT version()');
         client.release();
-        res.status(200).json({
-            status: 'ok',
-            database: 'connected',
-            version: result.rows[0].version
-        });
+
+        health.database.status = 'connected';
+        health.database.version = result.rows[0].version;
+
+        res.status(200).json(health);
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            database: 'disconnected',
-            error: error instanceof Error ? error.message : 'Unknown error'
+        health.status = 'degraded';
+        health.database.status = 'disconnected';
+
+        res.status(503).json({
+            ...health,
+            error: error instanceof Error ? error.message : 'Unknown database error'
         });
     }
 });

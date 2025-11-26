@@ -9,7 +9,7 @@ export const env = createEnv({
         DATABASE_PORT: z.string().default("5432"),
         DATABASE_NAME: z.string(),
         DATABASE_USER: z.string(),
-        DATABASE_PASSWORD: z.string(),
+        DATABASE_PASSWORD: z.string().optional(),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,
