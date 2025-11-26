@@ -1,5 +1,7 @@
 import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { env } from './env.js';
+import * as schema from './db/schema';
 
 const { Pool } = pg;
 
@@ -14,6 +16,9 @@ export const pool = new Pool({
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
     connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
 });
+
+// Create Drizzle instance
+export const db = drizzle(pool, { schema });
 
 // Handle pool errors
 pool.on('error', (err) => {

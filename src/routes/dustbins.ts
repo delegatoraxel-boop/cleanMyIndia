@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { pool } from '../db.js';
+import { eq, desc } from 'drizzle-orm';
+import { db } from '../db';
+import { dustbins, type NewDustbin } from '../db/schema';
 
 const router = Router();
 
@@ -25,30 +27,32 @@ router.get('/', async (req: Request, res: Response) => {
     try {
         const { status } = req.query;
 
-        let query = 'SELECT * FROM dustbins';
-        const params: any[] = [];
-
-        if (status) {
-            query += ' WHERE status = $1';
-            params.push(status);
+        let results;
+        if (status && typeof status === 'string') {
+            results = await db
+                .select()
+                .from(dustbins)
+                .where(eq(dustbins.status, status as any))
+                .orderBy(desc(dustbins.createdAt));
+        } else {
+            results = await db
+                .select()
+                .from(dustbins)
+                .orderBy(desc(dustbins.createdAt));
         }
 
-        query += ' ORDER BY created_at DESC';
-
-        const result = await pool.query(query, params);
-
         res.json({
-            count: result.rows.length,
-            dustbins: result.rows.map(row => ({
+            count: results.length,
+            dustbins: results.map(row => ({
                 id: row.id,
                 latitude: parseFloat(row.latitude),
                 longitude: parseFloat(row.longitude),
                 address: row.address,
                 description: row.description,
                 status: row.status,
-                reportedBy: row.reported_by,
-                createdAt: row.created_at,
-                updatedAt: row.updated_at
+                reportedBy: row.reportedBy,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt
             }))
         });
     } catch (error) {
@@ -65,19 +69,19 @@ router.get('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query(
-            'SELECT * FROM dustbins WHERE id = $1',
-            [id]
-        );
+        const result = await db
+            .select()
+            .from(dustbins)
+            .where(eq(dustbins.id, parseInt(id)));
 
-        if (result.rows.length === 0) {
+        if (result.length === 0) {
             return res.status(404).json({
                 error: 'Dustbin not found',
                 id: parseInt(id)
             });
         }
 
-        const row = result.rows[0];
+        const row = result[0];
         res.json({
             id: row.id,
             latitude: parseFloat(row.latitude),
@@ -85,9 +89,9 @@ router.get('/:id', async (req: Request, res: Response) => {
             address: row.address,
             description: row.description,
             status: row.status,
-            reportedBy: row.reported_by,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
+            reportedBy: row.reportedBy,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt
         });
     } catch (error) {
         console.error('Error fetching dustbin:', error);
@@ -135,14 +139,20 @@ router.post('/', async (req: Request, res: Response) => {
             });
         }
 
-        const result = await pool.query(
-            `INSERT INTO dustbins (latitude, longitude, address, description, reported_by) 
-             VALUES ($1, $2, $3, $4, $5) 
-             RETURNING *`,
-            [latitude, longitude, address || null, description || null, reportedBy || null]
-        );
+        const newDustbin: NewDustbin = {
+            latitude: latitude.toString(),
+            longitude: longitude.toString(),
+            address: address || null,
+            description: description || null,
+            reportedBy: reportedBy || null,
+        };
 
-        const row = result.rows[0];
+        const result = await db
+            .insert(dustbins)
+            .values(newDustbin)
+            .returning();
+
+        const row = result[0];
         res.status(201).json({
             id: row.id,
             latitude: parseFloat(row.latitude),
@@ -150,9 +160,9 @@ router.post('/', async (req: Request, res: Response) => {
             address: row.address,
             description: row.description,
             status: row.status,
-            reportedBy: row.reported_by,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
+            reportedBy: row.reportedBy,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt
         });
     } catch (error) {
         console.error('Error creating dustbin:', error);
@@ -170,22 +180,20 @@ router.put('/:id', async (req: Request, res: Response) => {
         const { latitude, longitude, address, description, status } = req.body;
 
         // Check if dustbin exists
-        const checkResult = await pool.query(
-            'SELECT id FROM dustbins WHERE id = $1',
-            [id]
-        );
+        const existing = await db
+            .select()
+            .from(dustbins)
+            .where(eq(dustbins.id, parseInt(id)));
 
-        if (checkResult.rows.length === 0) {
+        if (existing.length === 0) {
             return res.status(404).json({
                 error: 'Dustbin not found',
                 id: parseInt(id)
             });
         }
 
-        // Build dynamic update query
-        const updates: string[] = [];
-        const values: any[] = [];
-        let paramCount = 1;
+        // Build dynamic update object
+        const updateData: Partial<NewDustbin> & { updatedAt?: Date } = {};
 
         if (latitude !== undefined) {
             const validationError = validateCoordinates(latitude, longitude || 0);
@@ -195,8 +203,7 @@ router.put('/:id', async (req: Request, res: Response) => {
                     details: validationError
                 });
             }
-            updates.push(`latitude = $${paramCount++}`);
-            values.push(latitude);
+            updateData.latitude = latitude.toString();
         }
 
         if (longitude !== undefined) {
@@ -207,18 +214,15 @@ router.put('/:id', async (req: Request, res: Response) => {
                     details: validationError
                 });
             }
-            updates.push(`longitude = $${paramCount++}`);
-            values.push(longitude);
+            updateData.longitude = longitude.toString();
         }
 
         if (address !== undefined) {
-            updates.push(`address = $${paramCount++}`);
-            values.push(address);
+            updateData.address = address;
         }
 
         if (description !== undefined) {
-            updates.push(`description = $${paramCount++}`);
-            values.push(description);
+            updateData.description = description;
         }
 
         if (status !== undefined) {
@@ -229,29 +233,25 @@ router.put('/:id', async (req: Request, res: Response) => {
                     details: `Status must be one of: ${validStatuses.join(', ')}`
                 });
             }
-            updates.push(`status = $${paramCount++}`);
-            values.push(status);
+            updateData.status = status;
         }
 
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
                 error: 'No fields to update',
                 details: 'Provide at least one field to update'
             });
         }
 
-        updates.push(`updated_at = CURRENT_TIMESTAMP`);
-        values.push(id);
+        updateData.updatedAt = new Date();
 
-        const query = `
-            UPDATE dustbins 
-            SET ${updates.join(', ')} 
-            WHERE id = $${paramCount} 
-            RETURNING *
-        `;
+        const result = await db
+            .update(dustbins)
+            .set(updateData)
+            .where(eq(dustbins.id, parseInt(id)))
+            .returning();
 
-        const result = await pool.query(query, values);
-        const row = result.rows[0];
+        const row = result[0];
 
         res.json({
             id: row.id,
@@ -260,9 +260,9 @@ router.put('/:id', async (req: Request, res: Response) => {
             address: row.address,
             description: row.description,
             status: row.status,
-            reportedBy: row.reported_by,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
+            reportedBy: row.reportedBy,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt
         });
     } catch (error) {
         console.error('Error updating dustbin:', error);
@@ -278,12 +278,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query(
-            'DELETE FROM dustbins WHERE id = $1 RETURNING id',
-            [id]
-        );
+        const result = await db
+            .delete(dustbins)
+            .where(eq(dustbins.id, parseInt(id)))
+            .returning({ id: dustbins.id });
 
-        if (result.rows.length === 0) {
+        if (result.length === 0) {
             return res.status(404).json({
                 error: 'Dustbin not found',
                 id: parseInt(id)
