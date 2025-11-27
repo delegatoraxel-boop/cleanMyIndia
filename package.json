@@ -10,8 +10,14 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:dev": "dotenv -e .env -- drizzle-kit migrate",
+    "db:migrate:prod": "dotenv -e .env.prod -- drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:push:dev": "dotenv -e .env -- drizzle-kit push",
+    "db:push:prod": "dotenv -e .env.prod -- drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:studio:dev": "dotenv -e .env -- drizzle-kit studio",
+    "db:studio:prod": "dotenv -e .env.prod -- drizzle-kit studio"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +36,7 @@
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.15.6",
+    "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.7",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
