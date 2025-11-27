@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
 import { env } from './env';
 import { pool, testConnection } from './db';
 import dustbinsRouter from './routes/dustbins';
@@ -8,7 +7,6 @@ const app = express();
 const port = parseInt(env.PORT);
 
 // Middleware
-app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON request bodies
 
 // Health check endpoint
