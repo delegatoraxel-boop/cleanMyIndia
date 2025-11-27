@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { env } from './env.js';
-import { pool, testConnection } from './db.js';
-import dustbinsRouter from './routes/dustbins.js';
+import { env } from './env';
+import { pool, testConnection } from './db';
+import dustbinsRouter from './routes/dustbins';
 
 const app = express();
 const port = parseInt(env.PORT);
