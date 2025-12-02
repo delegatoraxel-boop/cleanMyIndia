@@ -1,12 +1,15 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import { env } from './env';
 import { pool, testConnection } from './db';
 import dustbinsRouter from './routes/dustbins';
+import authRouter from './routes/auth';
 
 const app = express();
 const port = parseInt(env.PORT);
 
 // Middleware
+app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON request bodies
 
 // Health check endpoint
@@ -42,6 +45,7 @@ app.get('/health', async (_req: Request, res: Response) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/dustbins', dustbinsRouter);
 
 // Test database connection on startup
